@@ -174,7 +174,6 @@ export const verifyPaymentSignature = async (req, res) => {
         updatedSeat = await Seat.findOneAndUpdate(
           {
             _id: idOfSeat,
-            show: showId,
             status: 'HELD'
           },
           { $set: { status: 'BOOKED', heldBy: null, holdExpiresAt: null } },
