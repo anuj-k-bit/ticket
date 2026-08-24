@@ -3,7 +3,7 @@ import { VenueRepo } from '../models/Venue.js';
 import { ShowRepo } from '../models/Show.js';
 import { SeatRepo } from '../models/Seat.js';
 
-export const seedInitialCloudData = async () => {
+export const seedInitialCloudData = async (force = false) => {
   try {
     // 1. Ensure Default Demo Accounts Exist
     const defaultAccounts = [
@@ -26,9 +26,9 @@ export const seedInitialCloudData = async () => {
 
     // 2. Check if Shows exist, if not seed default Indian venues & shows
     const existingShows = await ShowRepo.findAll();
-    if (existingShows && existingShows.length > 0) {
+    if (!force && existingShows && existingShows.length > 0) {
       console.log(`[Database Seeder] ${existingShows.length} shows already exist in database.`);
-      return;
+      return existingShows;
     }
 
     console.log('[Database Seeder] Seeding default Indian venues and shows...');
@@ -107,6 +107,8 @@ export const seedInitialCloudData = async () => {
       }
     ];
 
+    const createdShowsList = [];
+
     for (const s of showsToSeed) {
       const createdShow = await ShowRepo.create({
         title: s.title,
@@ -131,11 +133,14 @@ export const seedInitialCloudData = async () => {
         pricingMap
       });
 
+      createdShowsList.push(createdShow);
       console.log(`[Database Seeder] Created show & seats: ${s.title}`);
     }
 
     console.log('[Database Seeder] Initial database seeding completed successfully!');
+    return createdShowsList;
   } catch (err) {
     console.error('[Database Seeder Error]:', err.message);
+    return [];
   }
 };

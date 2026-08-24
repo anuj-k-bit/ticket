@@ -2,6 +2,7 @@ import { ShowRepo } from '../models/Show.js';
 import { VenueRepo } from '../models/Venue.js';
 import { SeatRepo } from '../models/Seat.js';
 import { holdService } from '../services/holdService.js';
+import { seedInitialCloudData } from '../utils/seedData.js';
 
 export const createShow = async (req, res) => {
   try {
@@ -66,6 +67,10 @@ export const getShows = async (req, res) => {
     }
 
     let shows = await ShowRepo.find(filter);
+    if (!shows || shows.length === 0) {
+      await seedInitialCloudData(true);
+      shows = await ShowRepo.find(filter);
+    }
 
     if (date) {
       const targetDate = new Date(date).toDateString();
