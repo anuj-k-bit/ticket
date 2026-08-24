@@ -129,5 +129,18 @@ export const SeatRepo = {
       return await Seat.findById(id);
     }
     return inMemorySeats.get(String(id)) || null;
+  },
+
+  async findStaleHolds(now = new Date()) {
+    if (mongoose.connection.readyState === 1) {
+      return await Seat.find({ status: 'HELD', holdExpiresAt: { $lte: now } });
+    }
+    const list = Array.from(inMemorySeats.values());
+    return list.filter(
+      (s) =>
+        s.status === 'HELD' &&
+        s.holdExpiresAt &&
+        new Date(s.holdExpiresAt).getTime() <= now.getTime()
+    );
   }
 };

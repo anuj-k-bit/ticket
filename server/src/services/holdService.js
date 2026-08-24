@@ -184,5 +184,43 @@ export const holdService = {
       message: `Seat hold released (${reason})`,
       seat: updatedSeat
     };
+  },
+
+  /**
+   * Periodic Stale Hold Cleanup:
+   * Finds all seats with status 'HELD' and holdExpiresAt <= now, and releases them
+   * using the exact same releaseSeatHold logic (reusing holdService, avoiding code duplication).
+   * Prevents orphaned holds when BullMQ jobs are lost during a Redis restart.
+   */
+  async cleanStaleHolds() {
+    try {
+      const now = new Date();
+      const staleSeats = await SeatRepo.findStaleHolds(now);
+
+      if (!staleSeats || staleSeats.length === 0) {
+        return { cleanedCount: 0 };
+      }
+
+      console.log(`[Hold Cleanup Service] Found ${staleSeats.length} stale held seats. Releasing...`);
+
+      let cleanedCount = 0;
+      for (const seat of staleSeats) {
+        const result = await this.releaseSeatHold({
+          showId: seat.show,
+          seatId: seat._id,
+          userId: seat.heldBy,
+          lockToken: seat.lockToken,
+          reason: 'STALE_HOLD_CLEANUP'
+        });
+        if (result.success && result.seat) {
+          cleanedCount++;
+        }
+      }
+
+      return { cleanedCount };
+    } catch (err) {
+      console.error('[Hold Cleanup Error]:', err.message);
+      return { cleanedCount: 0, error: err.message };
+    }
   }
 };
