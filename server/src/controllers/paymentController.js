@@ -135,20 +135,24 @@ export const verifyPaymentSignature = async (req, res) => {
 
     const userId = req.user.id;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !seatIds) {
-      return res.status(400).json({ message: 'Missing required payment verification parameters' });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !seatIds) {
+      return res.status(400).json({ message: 'Missing required payment verification parameters (razorpay_signature is required)' });
     }
 
     // HMAC SHA256 Signature Verification
-    if (razorpay_signature && process.env.RAZORPAY_KEY_SECRET && isRealRazorpayKey) {
+    if (isRealRazorpayKey && key_secret) {
       const generated_signature = crypto
         .createHmac('sha256', key_secret)
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest('hex');
 
       if (generated_signature !== razorpay_signature) {
-        return res.status(400).json({ message: 'Payment signature verification failed. Transaction rejected.' });
+        return res.status(400).json({ message: 'Payment signature verification failed. Invalid HMAC signature.' });
       }
+    } else {
+      console.warn(
+        `[Razorpay Payment Warning]: Running in sandbox/mock mode (no real Razorpay key configured). Payment verification disabled for order ${razorpay_order_id}`
+      );
     }
 
     const show = await ShowRepo.findById(showId);
