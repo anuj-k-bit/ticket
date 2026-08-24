@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { connectDB } from '../config/db.js';
 import { UserRepo } from '../models/User.js';
 import { VenueRepo } from '../models/Venue.js';
 import { ShowRepo } from '../models/Show.js';
@@ -5,6 +7,14 @@ import { SeatRepo } from '../models/Seat.js';
 
 export const seedInitialCloudData = async (force = false) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectDB();
+    }
+    if (mongoose.connection.readyState !== 1) {
+      console.warn('[Database Seeder] Skipping auto-seeding until MongoDB connection is ready.');
+      return;
+    }
+
     // 1. Ensure Default Demo Accounts Exist
     const defaultAccounts = [
       { name: 'CinePass Customer', email: 'customer@example.com', password: 'password123', role: 'customer' },
