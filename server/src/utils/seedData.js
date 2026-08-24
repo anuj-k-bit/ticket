@@ -18,22 +18,29 @@ export const seedInitialCloudData = async (force = false) => {
 
     let seededUserMap = {};
     for (const acc of defaultAccounts) {
-      let existing = await UserRepo.findOne({ email: acc.email }, '+password');
-      if (!existing) {
-        existing = await UserRepo.create(acc);
-        console.log(`[Database Seeder] Created default user: ${acc.email}`);
-      } else if (typeof existing.comparePassword === 'function') {
-        const matches = await existing.comparePassword('password123');
-        if (!matches) {
-          existing.password = 'password123';
-          if (typeof existing.save === 'function') await existing.save();
-          console.log(`[Database Seeder] Updated password for demo user: ${acc.email}`);
+      try {
+        let existing = await UserRepo.findOne({ email: acc.email }, '+password');
+        if (!existing) {
+          existing = await UserRepo.create(acc);
+          console.log(`[Database Seeder] Created default user: ${acc.email}`);
+        } else if (typeof existing.comparePassword === 'function') {
+          const matches = await existing.comparePassword('password123');
+          if (!matches) {
+            existing.password = 'password123';
+            if (typeof existing.save === 'function') await existing.save();
+            console.log(`[Database Seeder] Updated password for demo user: ${acc.email}`);
+          }
         }
+        seededUserMap[acc.role] = existing;
+      } catch (err) {
+        console.error(`[Database Seeder User Error] ${acc.email}:`, err.message);
       }
-      seededUserMap[acc.role] = existing;
     }
 
-    const adminUser = seededUserMap.admin || seededUserMap.organiser;
+    const adminUser = seededUserMap.admin || seededUserMap.organiser || seededUserMap.customer;
+    const adminId = adminUser?._id || adminUser?.id || new mongoose.Types.ObjectId();
+    const organiserUser = seededUserMap.organiser || seededUserMap.admin || adminUser;
+    const organiserId = organiserUser?._id || organiserUser?.id || adminId;
 
     // 2. Check if Shows exist, if not seed default Indian venues & shows
     const existingShows = await ShowRepo.find();
@@ -83,18 +90,18 @@ export const seedInitialCloudData = async (force = false) => {
       sections,
       seatMapTemplate,
       capacity,
-      createdBy: adminUser._id
+      createdBy: adminId
     });
 
-    const organiserUser = seededUserMap.organiser || seededUserMap.admin;
+    const venueId = String(venue._id || venue.id || new mongoose.Types.ObjectId());
 
     // Seed Shows
     const showsToSeed = [
       {
         title: 'A.R. Rahman: Dil Se Live Concert 2026',
         category: 'concert',
-        venueId: String(venue._id || venue.id),
-        organiserId: String(organiserUser._id || organiserUser.id),
+        venueId,
+        organiserId: String(organiserId),
         startTime: new Date(Date.now() + 86400000 * 3),
         endTime: new Date(Date.now() + 86400000 * 3 + 14400000),
         pricing: [
@@ -106,8 +113,8 @@ export const seedInitialCloudData = async (force = false) => {
       {
         title: 'IPL 2026 Final: Mumbai Indians vs Chennai Super Kings',
         category: 'sports',
-        venueId: String(venue._id || venue.id),
-        organiserId: String(organiserUser._id || organiserUser.id),
+        venueId,
+        organiserId: String(organiserId),
         startTime: new Date(Date.now() + 86400000 * 7),
         endTime: new Date(Date.now() + 86400000 * 7 + 18000000),
         pricing: [
@@ -151,7 +158,7 @@ export const seedInitialCloudData = async (force = false) => {
     console.log('[Database Seeder] Initial database seeding completed successfully!');
     return createdShowsList;
   } catch (err) {
-    console.error('[Database Seeder Error]:', err.message);
+    console.error('[Database Seeder Error]:', err);
     return [];
   }
 };
