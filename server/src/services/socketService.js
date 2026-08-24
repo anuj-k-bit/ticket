@@ -9,10 +9,15 @@ export const initSocket = (server) => {
     cors: {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (origin === clientUrl || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        const allowedOrigins = [clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+        if (
+          allowedOrigins.includes(origin) ||
+          origin.startsWith('http://localhost:') ||
+          origin.startsWith('http://127.0.0.1:')
+        ) {
           return callback(null, true);
         }
-        return callback(null, true);
+        return callback(new Error('Not allowed by Socket.io CORS'));
       },
       methods: ['GET', 'POST'],
       credentials: true

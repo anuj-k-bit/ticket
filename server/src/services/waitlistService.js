@@ -87,7 +87,8 @@ export const waitlistService = {
 
     // STEP 4: Non-blocking Email to Waitlisted Customer with Time-Limited Claim Link
     const showDoc = nextEntry.show?.title ? nextEntry.show : await ShowRepo.findById(showId);
-    const claimLink = `http://localhost:5173/shows/${showId}?offerSeatId=${seatId}`;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const claimLink = `${clientUrl}/shows/${showId}?offerSeatId=${seatId}`;
 
     Promise.race([
       emailQueue.add(
