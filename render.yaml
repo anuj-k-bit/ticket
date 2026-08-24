@@ -47,7 +47,6 @@ services:
   - type: web
     name: cinepass-frontend
     env: static
-    plan: free
     rootDir: client
     buildCommand: npm run build
     staticPublishPath: dist
