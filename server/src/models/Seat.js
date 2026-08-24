@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { connectDB } from '../config/db.js';
 
 const seatSchema = new mongoose.Schema(
   {
@@ -49,8 +50,7 @@ const seatSchema = new mongoose.Schema(
     heldBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
-      index: true
+      default: null
     },
     holdExpiresAt: {
       type: Date,
@@ -70,8 +70,19 @@ export const Seat = mongoose.model('Seat', seatSchema);
 // In-memory fallback repository for Seat documents
 const inMemorySeats = new Map();
 
+const ensureConnection = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (e) {
+      // fallback
+    }
+  }
+};
+
 export const SeatRepo = {
   async createSeatsForShow({ showId, venueId, seatTemplates, pricingMap }) {
+    await ensureConnection();
     const seatsToInsert = seatTemplates.map((template) => {
       const categoryName = template.category || template.section || 'Standard';
       return {
@@ -103,11 +114,12 @@ export const SeatRepo = {
     }
 
     // In-memory mock store
-    seatsToInsert.forEach((s) => inMemorySeats.set(String(s._id), s));
+    seatsToInsert.forEach((s) => inMemorySeats.set(String(s._id || Math.random()), s));
     return seatsToInsert;
   },
 
   async findByShow(showId) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Seat.find({ show: showId }).sort({ category: 1, row: 1, number: 1 });
     }
@@ -116,6 +128,7 @@ export const SeatRepo = {
   },
 
   async countHeldByUser(userId) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Seat.countDocuments({ heldBy: userId, status: 'HELD' });
     }
@@ -124,6 +137,7 @@ export const SeatRepo = {
   },
 
   async findById(id) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Seat.findById(id);
     }
@@ -131,15 +145,13 @@ export const SeatRepo = {
   },
 
   async findStaleHolds(now = new Date()) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Seat.find({ status: 'HELD', holdExpiresAt: { $lte: now } });
     }
     const list = Array.from(inMemorySeats.values());
     return list.filter(
-      (s) =>
-        s.status === 'HELD' &&
-        s.holdExpiresAt &&
-        new Date(s.holdExpiresAt).getTime() <= now.getTime()
+      (s) => s.status === 'HELD' && s.holdExpiresAt && new Date(s.holdExpiresAt) <= now
     );
   }
 };

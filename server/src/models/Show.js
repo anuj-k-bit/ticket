@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { connectDB } from '../config/db.js';
 
 const pricingTierSchema = new mongoose.Schema(
   {
@@ -64,8 +65,19 @@ export const Show = mongoose.model('Show', showSchema);
 // In-memory fallback repository for dev mode when Mongo daemon is offline
 const inMemoryShows = new Map();
 
+const ensureConnection = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (e) {
+      // fallback
+    }
+  }
+};
+
 export const ShowRepo = {
   async create(data) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       const show = new Show(data);
       return await show.save();
@@ -92,6 +104,7 @@ export const ShowRepo = {
   },
 
   async find(filter = {}) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       let query = Show.find(filter).populate('venue').populate('organiser', 'name email');
       return await query;
@@ -111,6 +124,7 @@ export const ShowRepo = {
   },
 
   async findById(id) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Show.findById(id).populate('venue').populate('organiser', 'name email');
     }
@@ -118,6 +132,7 @@ export const ShowRepo = {
   },
 
   async findByIdAndUpdate(id, data) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Show.findByIdAndUpdate(id, data, { new: true });
     }
@@ -129,6 +144,7 @@ export const ShowRepo = {
   },
 
   async findByIdAndDelete(id) {
+    await ensureConnection();
     if (mongoose.connection.readyState === 1) {
       return await Show.findByIdAndDelete(id);
     }
