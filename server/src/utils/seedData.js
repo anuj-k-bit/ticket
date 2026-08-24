@@ -7,13 +7,7 @@ import { SeatRepo } from '../models/Seat.js';
 
 export const seedInitialCloudData = async (force = false) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      await connectDB();
-    }
-    if (mongoose.connection.readyState !== 1) {
-      console.warn('[Database Seeder] Skipping auto-seeding until MongoDB connection is ready.');
-      return;
-    }
+    await connectDB();
 
     // 1. Ensure Default Demo Accounts Exist
     const defaultAccounts = [
