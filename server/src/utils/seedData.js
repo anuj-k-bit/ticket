@@ -14,10 +14,17 @@ export const seedInitialCloudData = async (force = false) => {
 
     let seededUserMap = {};
     for (const acc of defaultAccounts) {
-      let existing = await UserRepo.findOne({ email: acc.email });
+      let existing = await UserRepo.findOne({ email: acc.email }, '+password');
       if (!existing) {
         existing = await UserRepo.create(acc);
         console.log(`[Database Seeder] Created default user: ${acc.email}`);
+      } else if (typeof existing.comparePassword === 'function') {
+        const matches = await existing.comparePassword('password123');
+        if (!matches) {
+          existing.password = 'password123';
+          if (typeof existing.save === 'function') await existing.save();
+          console.log(`[Database Seeder] Updated password for demo user: ${acc.email}`);
+        }
       }
       seededUserMap[acc.role] = existing;
     }
