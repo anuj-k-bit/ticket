@@ -6,6 +6,18 @@ Engineered for large-scale stadium events (5,000–10,000+ seats), this platform
 
 ---
 
+## 🔑 Demo Login Credentials for Reviewers & Evaluators
+
+You can log in to the live platform using any of the pre-seeded accounts below:
+
+| Role | Email Address | Password | Permitted Actions & Feature Access |
+| :--- | :--- | :--- | :--- |
+| **Customer** | `customer@example.com` | `password123` | Browse Indian events, hold 10-min seats, complete Razorpay checkout, receive QR ticket emails, join waitlists. |
+| **Event Organiser** | `organiser@example.com` | `password123` | Schedule shows, configure section pricing, view live revenue & category sales analytics charts. |
+| **Platform Admin** | `admin@example.com` | `password123` | Create & edit venue seat templates, platform-wide oversight metrics, verify & check-in QR tickets. |
+
+---
+
 ## 🏗️ System Architecture Diagram
 
 ```mermaid

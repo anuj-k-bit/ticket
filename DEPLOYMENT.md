@@ -82,7 +82,15 @@ The repository includes pre-configured deployment blueprints:
 
 ---
 
-## Step 5: Post-Deployment Verification
+## Step 5: Post-Deployment Verification & Reviewer Credentials
+
+### Pre-Seeded Demo Login Credentials for Evaluators:
+
+| Role | Email Address | Password | Permitted Actions |
+| :--- | :--- | :--- | :--- |
+| **Customer** | `customer@example.com` | `password123` | Browse Indian events, hold 10-min seats, complete Razorpay checkout, receive QR ticket emails. |
+| **Event Organiser** | `organiser@example.com` | `password123` | Schedule shows, configure section pricing, view live revenue analytics charts. |
+| **Platform Admin** | `admin@example.com` | `password123` | Create venue templates, view oversight metrics, verify & check-in QR tickets. |
 
 1. Test user sign up / sign in.
 2. Test real-time seat map holds and Socket.io broadcasts.
