@@ -7,13 +7,16 @@ const rawEnvUrl = import.meta.env.VITE_API_BASE_URL;
 
 let API_BASE_URL = EXACT_BACKEND_URL;
 
-if (rawEnvUrl && rawEnvUrl !== 'undefined' && rawEnvUrl !== 'null' && rawEnvUrl.trim() !== '') {
+if (rawEnvUrl && rawEnvUrl.includes('cinepass-backend-2110.onrender.com')) {
   API_BASE_URL = rawEnvUrl.trim();
 } else if (
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 ) {
   API_BASE_URL = 'http://localhost:5000/api';
+} else {
+  // Always default to live backend with -2110 suffix
+  API_BASE_URL = EXACT_BACKEND_URL;
 }
 
 console.log('[API Base URL]:', API_BASE_URL);

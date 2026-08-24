@@ -129,13 +129,15 @@ export const ShowDetail = () => {
 
     const rawSocketUrl = import.meta.env.VITE_SOCKET_URL;
     let socketUrl = 'https://cinepass-backend-2110.onrender.com';
-    if (rawSocketUrl && rawSocketUrl !== 'undefined' && rawSocketUrl !== 'null' && rawSocketUrl.trim() !== '') {
+    if (rawSocketUrl && rawSocketUrl.includes('cinepass-backend-2110.onrender.com')) {
       socketUrl = rawSocketUrl.trim();
     } else if (
       typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ) {
       socketUrl = 'http://localhost:5000';
+    } else {
+      socketUrl = 'https://cinepass-backend-2110.onrender.com';
     }
 
     const socket = io(socketUrl, {
