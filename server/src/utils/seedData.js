@@ -42,14 +42,7 @@ export const seedInitialCloudData = async (force = false) => {
     const organiserUser = seededUserMap.organiser || seededUserMap.admin || adminUser;
     const organiserId = organiserUser?._id || organiserUser?.id || adminId;
 
-    // 2. Check if Shows exist, if not seed default Indian venues & shows
-    const existingShows = await ShowRepo.find();
-    if (!force && existingShows && existingShows.length > 0) {
-      console.log(`[Database Seeder] ${existingShows.length} shows already exist in database.`);
-      return existingShows;
-    }
-
-    console.log('[Database Seeder] Seeding default Indian venues and shows...');
+    const existingShows = (await ShowRepo.find()) || [];
 
     const sections = [
       { name: 'Sachin Tendulkar Stand (VIP)', rows: 4, seatsPerRow: 12 },
@@ -138,6 +131,20 @@ export const seedInitialCloudData = async (force = false) => {
         ]
       },
       {
+        title: 'India vs Pakistan World T20 Showdown',
+        category: 'sports',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 12),
+        endTime: new Date(Date.now() + 86400000 * 12 + 18000000),
+        bannerUrl: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 35000 },
+          { category: 'Garware Pavilion (Gold)', price: 18000 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 8500 }
+        ]
+      },
+      {
         title: 'Zakir Khan: Tathastu Live Comedy Special',
         category: 'standup',
         venueId,
@@ -149,6 +156,20 @@ export const seedInitialCloudData = async (force = false) => {
           { category: 'Sachin Tendulkar Stand (VIP)', price: 4999 },
           { category: 'Garware Pavilion (Gold)', price: 2999 },
           { category: 'Vijay Merchant Stand (Silver)', price: 1499 }
+        ]
+      },
+      {
+        title: 'Anubhav Singh Bassi: Bas Kar Bassi Live',
+        category: 'standup',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 6),
+        endTime: new Date(Date.now() + 86400000 * 6 + 7200000),
+        bannerUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 3999 },
+          { category: 'Garware Pavilion (Gold)', price: 2499 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 1299 }
         ]
       },
       {
@@ -184,6 +205,12 @@ export const seedInitialCloudData = async (force = false) => {
     const createdShowsList = [];
 
     for (const s of showsToSeed) {
+      const existing = existingShows.find((ex) => ex.title === s.title);
+      if (existing) {
+        createdShowsList.push(existing);
+        continue;
+      }
+
       const createdShow = await ShowRepo.create({
         title: s.title,
         category: s.category,
