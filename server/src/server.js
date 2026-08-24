@@ -14,18 +14,13 @@ const server = http.createServer(app);
 // Initialize Socket.io attached to HTTP Server
 initSocket(server, process.env.CLIENT_URL);
 
-// Connect DB, Seed Demo Accounts, and Start Server
-const startServer = async () => {
+// Start HTTP Server immediately so cloud proxies (Render/Vercel) bind $PORT instantly
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log(`[Server] Listening on http://0.0.0.0:${PORT}`);
   try {
     await connectDB();
     await seedInitialCloudData();
-    server.listen(PORT, () => {
-      console.log(`[Server] Listening on http://localhost:${PORT}`);
-    });
   } catch (error) {
-    console.error(`[Server] Startup Failure: ${error.message}`);
-    process.exit(1);
+    console.error(`[Server] Non-fatal DB/Seeder initialization warning: ${error.message}`);
   }
-};
-
-startServer();
+});
