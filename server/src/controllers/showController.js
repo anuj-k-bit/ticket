@@ -61,13 +61,14 @@ export const getShows = async (req, res) => {
   try {
     const { category, date, search } = req.query;
 
-    let filter = { status: 'upcoming' };
+    let filter = {};
     if (category && category !== 'all') {
       filter.category = category;
     }
 
     let shows = await ShowRepo.find(filter);
     if (!shows || shows.length === 0) {
+      console.log('[Get Shows] 0 shows in DB. Executing seedInitialCloudData(true)...');
       await seedInitialCloudData(true);
       shows = await ShowRepo.find(filter);
     }
