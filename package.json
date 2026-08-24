@@ -1,0 +1,8 @@
+{
+  "name": "cinepass-ticket-booking-platform",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install --legacy-peer-deps && npm run build",
+    "start": "node server/src/server.js"
+  }
+}
