@@ -20,3 +20,8 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Prevent committing debug/test scripts with credentials
+test_*.js
+debug_*.js
+

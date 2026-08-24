@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+logs/
+*.log
+
+# Prevent committing debug and test scripts with credentials
+test_*.js
+debug_*.js

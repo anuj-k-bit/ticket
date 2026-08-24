@@ -58,8 +58,8 @@ graph TD
    - `JWT_SECRET`: *(Your random 64-character secret key)*
    - `SMTP_HOST`: `smtp.gmail.com`
    - `SMTP_PORT`: `587`
-   - `SMTP_USER`: `davidloomba@gmail.com`
-   - `SMTP_PASS`: `tiioygeayvtswzcz`
+   - `SMTP_USER`: `your_email@gmail.com`
+   - `SMTP_PASS`: `your_app_password`
    - `RAZORPAY_KEY_ID`: `rzp_test_R4e941G0XJ5k2E`
    - `RAZORPAY_KEY_SECRET`: `w881VqT01N7PzE6N8K348e02`
    - `CLIENT_URL`: *(Your deployed frontend URL e.g. https://cinepass.onrender.com)*
