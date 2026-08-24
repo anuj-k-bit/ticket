@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-// Production API Base URL fallback
+// Exact Live Render Backend Primary URL
+const EXACT_BACKEND_URL = 'https://cinepass-backend-2110.onrender.com/api';
+
 const rawEnvUrl = import.meta.env.VITE_API_BASE_URL;
 
-let API_BASE_URL = 'https://cinepass-backend.onrender.com/api';
+let API_BASE_URL = EXACT_BACKEND_URL;
 
 if (rawEnvUrl && rawEnvUrl !== 'undefined' && rawEnvUrl !== 'null' && rawEnvUrl.trim() !== '') {
   API_BASE_URL = rawEnvUrl.trim();

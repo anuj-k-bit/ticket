@@ -32,7 +32,7 @@ export const seedInitialCloudData = async (force = false) => {
     const adminUser = seededUserMap.admin || seededUserMap.organiser;
 
     // 2. Check if Shows exist, if not seed default Indian venues & shows
-    const existingShows = await ShowRepo.findAll();
+    const existingShows = await ShowRepo.find();
     if (!force && existingShows && existingShows.length > 0) {
       console.log(`[Database Seeder] ${existingShows.length} shows already exist in database.`);
       return existingShows;

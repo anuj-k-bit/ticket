@@ -128,7 +128,7 @@ export const ShowDetail = () => {
     fetchShowData();
 
     const rawSocketUrl = import.meta.env.VITE_SOCKET_URL;
-    let socketUrl = 'https://cinepass-backend.onrender.com';
+    let socketUrl = 'https://cinepass-backend-2110.onrender.com';
     if (rawSocketUrl && rawSocketUrl !== 'undefined' && rawSocketUrl !== 'null' && rawSocketUrl.trim() !== '') {
       socketUrl = rawSocketUrl.trim();
     } else if (
