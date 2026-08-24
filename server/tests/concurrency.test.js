@@ -1,3 +1,5 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_2026';
+
 import request from 'supertest';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
@@ -34,7 +36,7 @@ describe('High-Concurrency Seat Lock Test', () => {
     seatId = String(createdSeats[0]._id);
 
     // 2. Create 20 Fake Users & Issue JWT Tokens
-    const jwtSecret = process.env.JWT_SECRET || 'supersecretjwtkey_change_in_production_12345';
+    const jwtSecret = process.env.JWT_SECRET;
     for (let i = 1; i <= 20; i++) {
       const user = await UserRepo.create({
         name: `Fake User ${i}`,

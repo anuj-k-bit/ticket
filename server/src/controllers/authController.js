@@ -2,11 +2,10 @@ import jwt from 'jsonwebtoken';
 import { UserRepo } from '../models/User.js';
 
 const generateToken = (id, role) => {
-  return jwt.sign(
-    { id, role },
-    process.env.JWT_SECRET || 'supersecretjwtkey_change_in_production_12345',
-    { expiresIn: '7d' }
-  );
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL ERROR: JWT_SECRET environment variable is missing.');
+  }
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 export const register = async (req, res) => {

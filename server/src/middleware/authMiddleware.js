@@ -1,12 +1,18 @@
 import jwt from 'jsonwebtoken';
 
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    'FATAL ERROR: JWT_SECRET environment variable is missing. Server refusing to start with insecure secret defaults.'
+  );
+}
+
 export const protect = async (req, res, next) => {
   let token;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_in_production_12345');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       req.user = {
         id: decoded.id,
