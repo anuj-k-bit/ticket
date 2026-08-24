@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { acquireRedisLock, releaseRedisLock } from '../config/redis.js';
 import { seatHoldExpiryQueue } from '../config/queue.js';
 import { Seat, SeatRepo } from '../models/Seat.js';
@@ -10,7 +11,7 @@ const MAX_HELD_SEATS_PER_USER = parseInt(process.env.MAX_HELD_SEATS_PER_USER || 
 export const holdService = {
   /**
    * Acquire a seat hold with Redis locking, atomic MongoDB update, BullMQ delayed job, and Socket.io broadcast.
-   * Includes Hold-Griefing Prevention: Caps maximum active held seats per user across the platform.
+   * Uses unique crypto.randomUUID() lock tokens for safe atomic releases.
    */
   async holdSeat({ showId, seatId, userId, ttlSeconds = DEFAULT_TTL_SECONDS }) {
     // REQUIREMENT 3: Hold-Griefing Prevention (Per-User Hold Cap)
@@ -24,9 +25,11 @@ export const holdService = {
     }
 
     const lockKey = `hold:${showId}:${seatId}`;
+    // Generate unique lock token to prevent lock deletion by expired threads
+    const lockToken = crypto.randomUUID();
 
-    // STEP 1: Attempt Atomic Redis Lock (SET key userId NX EX ttlSeconds)
-    const lockAcquired = await acquireRedisLock(lockKey, String(userId), ttlSeconds);
+    // STEP 1: Attempt Atomic Redis Lock (SET key lockToken NX EX ttlSeconds)
+    const lockAcquired = await acquireRedisLock(lockKey, lockToken, ttlSeconds);
     if (!lockAcquired) {
       return {
         success: false,
@@ -47,6 +50,7 @@ export const holdService = {
           $set: {
             status: 'HELD',
             heldBy: userId,
+            lockToken,
             holdExpiresAt
           }
         },
@@ -59,6 +63,7 @@ export const holdService = {
       if (seat && seat.status === 'AVAILABLE') {
         seat.status = 'HELD';
         seat.heldBy = userId;
+        seat.lockToken = lockToken;
         seat.holdExpiresAt = holdExpiresAt;
         updatedSeat = seat;
       }
@@ -66,7 +71,7 @@ export const holdService = {
 
     // Step 2 Edge Case: Lost race at DB layer despite winning Redis lock
     if (!updatedSeat) {
-      await releaseRedisLock(lockKey, String(userId));
+      await releaseRedisLock(lockKey, lockToken);
       return {
         success: false,
         code: 409,
@@ -79,7 +84,7 @@ export const holdService = {
     Promise.race([
       seatHoldExpiryQueue.add(
         'expireSeatHold',
-        { showId, seatId, userId },
+        { showId, seatId, userId, lockToken },
         {
           delay: ttlSeconds * 1000,
           jobId,
@@ -111,17 +116,20 @@ export const holdService = {
       code: 200,
       message: 'Seat hold acquired successfully',
       seat: updatedSeat,
+      lockToken,
       holdExpiresAt
     };
   },
 
   /**
    * Release a seat hold (manual cancel, navigation away, or BullMQ TTL expiry).
+   * Safe atomic release via Lua script (GET + compare + DEL).
    */
-  async releaseSeatHold({ showId, seatId, userId, reason = 'USER_CANCELLED' }) {
+  async releaseSeatHold({ showId, seatId, userId, lockToken, reason = 'USER_CANCELLED' }) {
     const lockKey = `hold:${showId}:${seatId}`;
 
-    await releaseRedisLock(lockKey, String(userId));
+    // Safe atomic release: only deletes lock if stored value matches lockToken
+    await releaseRedisLock(lockKey, lockToken);
 
     let updatedSeat = null;
 
@@ -132,6 +140,7 @@ export const holdService = {
           $set: {
             status: 'AVAILABLE',
             heldBy: null,
+            lockToken: null,
             holdExpiresAt: null
           }
         },
@@ -143,6 +152,7 @@ export const holdService = {
       if (seat && (seat.status === 'HELD' || String(seat.heldBy) === String(userId))) {
         seat.status = 'AVAILABLE';
         seat.heldBy = null;
+        seat.lockToken = null;
         seat.holdExpiresAt = null;
         updatedSeat = seat;
       }

@@ -26,7 +26,15 @@
 - **Forbidden**: **NEVER** fetch a document, mutate it in JavaScript, and call `.save()`, as this introduces race conditions during concurrent booking attempts.
 
 ### 2. Distributed Redis Locks for Seat Holds
-- **Redis Lock Acquisition**: Before writing any hold to the database, a Redis lock **MUST** be acquired using `SET key lock_value NX EX <ttl>` (or `ioredis` locking helpers).
+- **Redis Lock Acquisition**: Before writing any hold to the database, a Redis lock **MUST** be acquired using `SET key lock_token NX EX <ttl>` where `lock_token` is a unique value (e.g. `crypto.randomUUID()`).
+- **Safe Lock Release via Lua Script**: Lock releases (both explicit user releases and BullMQ expiry jobs) **MUST** only delete the key if the stored value matches the token. This **MUST** be performed atomically using a Lua script (`GET + compare + DEL` via `EVAL`):
+  ```lua
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+  else
+    return 0
+  end
+  ```
 - **Lock Failure**: If Redis lock acquisition fails, immediately reject the request (e.g., return HTTP 409 Conflict) without performing database operations.
 
 ### 3. Hold Expiry & Job Scheduling
