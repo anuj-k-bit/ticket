@@ -10,14 +10,14 @@ dotenv.config({ path: './.env' });
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://ticket:Chetna%400571@cluster0.i2jnq9v.mongodb.net/ticket_booking?retryWrites=true&w=majority';
 
 async function runDirectCloudSeed() {
-  console.log('=== DIRECT CLOUD MONGODB ATLAS SEEDING ===');
+  console.log('=== SEEDING MULTIPLE CATEGORY EVENTS TO CLOUD MONGODB ATLAS ===');
   console.log('Connecting to Atlas URI:', MONGO_URI);
 
   try {
     await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
     console.log('[MongoDB Atlas] Connected successfully!');
 
-    // Clean existing shows, venues, seats to ensure fresh data
+    // Clean existing shows, venues, seats to ensure fresh populated data across all categories
     await Show.deleteMany({});
     await Venue.deleteMany({});
     await Seat.deleteMany({});
@@ -68,6 +68,26 @@ async function runDirectCloudSeed() {
           { name: 'Platinum Stand', rows: 8, seatsPerRow: 16 },
           { name: 'Gold Stand', rows: 10, seatsPerRow: 20 }
         ]
+      },
+      {
+        name: 'Nita Mukesh Ambani Cultural Centre (NMACC)',
+        address: 'Bandra Kurla Complex',
+        city: 'Mumbai, Maharashtra',
+        sections: [
+          { name: 'Grand Diamond Box (VIP)', rows: 4, seatsPerRow: 10 },
+          { name: 'Balcony Lounge (Gold)', rows: 6, seatsPerRow: 14 },
+          { name: 'Stalls Arena (Silver)', rows: 8, seatsPerRow: 16 }
+        ]
+      },
+      {
+        name: 'Kamani Auditorium',
+        address: '1 Copernicus Marg, Mandi House',
+        city: 'New Delhi, Delhi',
+        sections: [
+          { name: 'Front VIP Row', rows: 3, seatsPerRow: 10 },
+          { name: 'Executive Gallery', rows: 6, seatsPerRow: 14 },
+          { name: 'Rear Circle', rows: 8, seatsPerRow: 16 }
+        ]
       }
     ];
 
@@ -105,14 +125,16 @@ async function runDirectCloudSeed() {
         capacity: seatMapTemplate.length,
         createdBy: adminUser._id
       });
-      console.log(`+ Created venue: ${vc.name} with ${seatMapTemplate.length} seat templates`);
+      console.log(`+ Created venue: ${vc.name} (${seatMapTemplate.length} seats)`);
       createdVenues.push(newVenue);
     }
 
     const wankhede = createdVenues[0];
     const motera = createdVenues[1];
+    const nmacc = createdVenues[2];
+    const kamani = createdVenues[3];
 
-    // 3. Create Shows
+    // 3. Seed Shows Across ALL Categories
     const showsToCreate = [
       {
         title: 'A.R. Rahman: Dil Se Live Concert 2026',
@@ -128,6 +150,22 @@ async function runDirectCloudSeed() {
           { category: 'Sachin Tendulkar Stand (VIP)', price: 12500 },
           { category: 'Garware Pavilion (Gold)', price: 6500 },
           { category: 'Vijay Merchant Stand (Silver)', price: 3500 }
+        ]
+      },
+      {
+        title: 'Coldplay: Music of the Spheres World Tour',
+        description: 'Global pop icons Coldplay bringing their breathtaking laser light stadium spectacle to India!',
+        category: 'concert',
+        venueId: String(wankhede._id || wankhede.id),
+        seatTemplates: wankhede.seatMapTemplate,
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 5),
+        endTime: new Date(Date.now() + 86400000 * 5 + 14400000),
+        bannerUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 18500 },
+          { category: 'Garware Pavilion (Gold)', price: 9500 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 4500 }
         ]
       },
       {
@@ -147,8 +185,8 @@ async function runDirectCloudSeed() {
         ]
       },
       {
-        title: 'World T20 Championship Final 2026',
-        description: 'The biggest international cricket showdown live at the world largest stadium in Ahmedabad!',
+        title: 'India vs Pakistan World T20 Showdown',
+        description: 'The world biggest cricket rivalry live at the 132,000 capacity Narendra Modi Stadium in Ahmedabad!',
         category: 'sports',
         venueId: String(motera._id || motera.id),
         seatTemplates: motera.seatMapTemplate,
@@ -160,6 +198,70 @@ async function runDirectCloudSeed() {
           { category: 'Presidential VIP Box', price: 35000 },
           { category: 'Platinum Stand', price: 18000 },
           { category: 'Gold Stand', price: 8500 }
+        ]
+      },
+      {
+        title: 'Zakir Khan: Tathastu Live Comedy Special',
+        description: 'India beloved Sakht Launda Zakir Khan performing his hit 90-minute standup comedy show live in Mumbai!',
+        category: 'standup',
+        venueId: String(nmacc._id || nmacc.id),
+        seatTemplates: nmacc.seatMapTemplate,
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 4),
+        endTime: new Date(Date.now() + 86400000 * 4 + 7200000),
+        bannerUrl: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Grand Diamond Box (VIP)', price: 4999 },
+          { category: 'Balcony Lounge (Gold)', price: 2999 },
+          { category: 'Stalls Arena (Silver)', price: 1499 }
+        ]
+      },
+      {
+        title: 'Anubhav Singh Bassi: Bas Kar Bassi Live',
+        description: 'Laugh out loud with Bassi relatable storytelling and hilarious anecdotes live at Mandi House, New Delhi.',
+        category: 'standup',
+        venueId: String(kamani._id || kamani.id),
+        seatTemplates: kamani.seatMapTemplate,
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 6),
+        endTime: new Date(Date.now() + 86400000 * 6 + 7200000),
+        bannerUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Front VIP Row', price: 3999 },
+          { category: 'Executive Gallery', price: 2499 },
+          { category: 'Rear Circle', price: 1299 }
+        ]
+      },
+      {
+        title: 'Jawan 2: IMAX 3D Grand World Premiere',
+        description: 'Witness Shah Rukh Khan in high-octane IMAX 3D action at the state-of-the-art NMACC theater auditorium!',
+        category: 'movie',
+        venueId: String(nmacc._id || nmacc.id),
+        seatTemplates: nmacc.seatMapTemplate,
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 2),
+        endTime: new Date(Date.now() + 86400000 * 2 + 10800000),
+        bannerUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Grand Diamond Box (VIP)', price: 2500 },
+          { category: 'Balcony Lounge (Gold)', price: 1500 },
+          { category: 'Stalls Arena (Silver)', price: 800 }
+        ]
+      },
+      {
+        title: 'Mughal-e-Azam: The Epic Musical Drama',
+        description: 'Feroz Abbas Khan grandeur production featuring live classical singing, Kathak dances, and Manish Malhotra costumes.',
+        category: 'theater',
+        venueId: String(nmacc._id || nmacc.id),
+        seatTemplates: nmacc.seatMapTemplate,
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 8),
+        endTime: new Date(Date.now() + 86400000 * 8 + 10800000),
+        bannerUrl: 'https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Grand Diamond Box (VIP)', price: 7500 },
+          { category: 'Balcony Lounge (Gold)', price: 4500 },
+          { category: 'Stalls Arena (Silver)', price: 2500 }
         ]
       }
     ];
@@ -188,10 +290,10 @@ async function runDirectCloudSeed() {
         pricingMap
       });
 
-      console.log(`+ Created show & ${createdSeats.length} stadium seats: ${s.title}`);
+      console.log(`+ Created ${s.category.toUpperCase()} event & ${createdSeats.length} seats: ${s.title}`);
     }
 
-    console.log('\n=== CLOUD ATLAS SEEDING COMPLETED SUCCESSFULLY! ===');
+    console.log('\n=== MULTI-CATEGORY SEEDING COMPLETED SUCCESSFULLY! ===');
     process.exit(0);
   } catch (err) {
     console.error('CRITICAL SEEDING ERROR:', err);

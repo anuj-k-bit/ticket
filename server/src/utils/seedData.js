@@ -82,7 +82,6 @@ export const seedInitialCloudData = async (force = false) => {
     const seatMapTemplate = generateSeatTemplates(sections);
     const capacity = seatMapTemplate.length;
 
-    // Seed Venue with required createdBy field
     let venue = await VenueRepo.create({
       name: 'Wankhede Stadium',
       address: 'D Road, Churchgate',
@@ -95,7 +94,6 @@ export const seedInitialCloudData = async (force = false) => {
 
     const venueId = String(venue._id || venue.id || new mongoose.Types.ObjectId());
 
-    // Seed Shows
     const showsToSeed = [
       {
         title: 'A.R. Rahman: Dil Se Live Concert 2026',
@@ -104,10 +102,25 @@ export const seedInitialCloudData = async (force = false) => {
         organiserId: String(organiserId),
         startTime: new Date(Date.now() + 86400000 * 3),
         endTime: new Date(Date.now() + 86400000 * 3 + 14400000),
+        bannerUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
         pricing: [
           { category: 'Sachin Tendulkar Stand (VIP)', price: 12500 },
           { category: 'Garware Pavilion (Gold)', price: 6500 },
           { category: 'Vijay Merchant Stand (Silver)', price: 3500 }
+        ]
+      },
+      {
+        title: 'Coldplay: Music of the Spheres World Tour',
+        category: 'concert',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 5),
+        endTime: new Date(Date.now() + 86400000 * 5 + 14400000),
+        bannerUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 18500 },
+          { category: 'Garware Pavilion (Gold)', price: 9500 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 4500 }
         ]
       },
       {
@@ -117,10 +130,53 @@ export const seedInitialCloudData = async (force = false) => {
         organiserId: String(organiserId),
         startTime: new Date(Date.now() + 86400000 * 7),
         endTime: new Date(Date.now() + 86400000 * 7 + 18000000),
+        bannerUrl: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
         pricing: [
           { category: 'Sachin Tendulkar Stand (VIP)', price: 25000 },
           { category: 'Garware Pavilion (Gold)', price: 12000 },
           { category: 'Vijay Merchant Stand (Silver)', price: 5000 }
+        ]
+      },
+      {
+        title: 'Zakir Khan: Tathastu Live Comedy Special',
+        category: 'standup',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 4),
+        endTime: new Date(Date.now() + 86400000 * 4 + 7200000),
+        bannerUrl: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 4999 },
+          { category: 'Garware Pavilion (Gold)', price: 2999 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 1499 }
+        ]
+      },
+      {
+        title: 'Jawan 2: IMAX 3D Grand World Premiere',
+        category: 'movie',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 2),
+        endTime: new Date(Date.now() + 86400000 * 2 + 10800000),
+        bannerUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 2500 },
+          { category: 'Garware Pavilion (Gold)', price: 1500 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 800 }
+        ]
+      },
+      {
+        title: 'Mughal-e-Azam: The Epic Musical Drama',
+        category: 'theater',
+        venueId,
+        organiserId: String(organiserId),
+        startTime: new Date(Date.now() + 86400000 * 8),
+        endTime: new Date(Date.now() + 86400000 * 8 + 10800000),
+        bannerUrl: 'https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&w=1200&q=80',
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 7500 },
+          { category: 'Garware Pavilion (Gold)', price: 4500 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 2500 }
         ]
       }
     ];
@@ -135,6 +191,7 @@ export const seedInitialCloudData = async (force = false) => {
         organiser: s.organiserId,
         startTime: s.startTime,
         endTime: s.endTime,
+        bannerUrl: s.bannerUrl,
         pricing: s.pricing,
         status: 'upcoming'
       });
