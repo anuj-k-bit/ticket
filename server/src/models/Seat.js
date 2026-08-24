@@ -3,15 +3,17 @@ import { connectDB } from '../config/db.js';
 
 const seatSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      required: true
+    },
     show: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Show',
+      type: String,
       required: true,
       index: true
     },
     venue: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Venue',
+      type: String,
       required: true
     },
     category: {
@@ -48,8 +50,7 @@ const seatSchema = new mongoose.Schema(
       index: true
     },
     heldBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type: String,
       default: null
     },
     holdExpiresAt: {
@@ -58,7 +59,8 @@ const seatSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    _id: false
   }
 );
 
@@ -85,9 +87,11 @@ export const SeatRepo = {
     await ensureConnection();
     const seatsToInsert = seatTemplates.map((template) => {
       const categoryName = template.category || template.section || 'Standard';
+      const customId = `seat_${showId}_${categoryName}_${template.row}_${template.number}`.replace(/[\s\(\)]/g, '_');
       return {
-        show: showId,
-        venue: venueId,
+        _id: customId,
+        show: String(showId),
+        venue: String(venueId),
         category: categoryName,
         row: template.row,
         number: template.number,
@@ -114,23 +118,32 @@ export const SeatRepo = {
     }
 
     // In-memory mock store
-    seatsToInsert.forEach((s) => inMemorySeats.set(String(s._id || Math.random()), s));
+    seatsToInsert.forEach((s) => inMemorySeats.set(String(s._id), s));
     return seatsToInsert;
   },
 
   async findByShow(showId) {
     await ensureConnection();
     if (mongoose.connection.readyState === 1) {
-      return await Seat.find({ show: showId }).sort({ category: 1, row: 1, number: 1 });
+      const docs = await Seat.find({ show: String(showId) }).sort({ category: 1, row: 1, number: 1 });
+      return docs.map((d) => ({
+        ...(d.toObject ? d.toObject() : d),
+        _id: String(d._id)
+      }));
     }
     const list = Array.from(inMemorySeats.values());
-    return list.filter((s) => String(s.show) === String(showId));
+    return list
+      .filter((s) => String(s.show) === String(showId))
+      .map((s) => ({
+        ...s,
+        _id: String(s._id || s.id)
+      }));
   },
 
   async countHeldByUser(userId) {
     await ensureConnection();
     if (mongoose.connection.readyState === 1) {
-      return await Seat.countDocuments({ heldBy: userId, status: 'HELD' });
+      return await Seat.countDocuments({ heldBy: String(userId), status: 'HELD' });
     }
     const list = Array.from(inMemorySeats.values());
     return list.filter((s) => s.status === 'HELD' && String(s.heldBy) === String(userId)).length;
@@ -139,7 +152,8 @@ export const SeatRepo = {
   async findById(id) {
     await ensureConnection();
     if (mongoose.connection.readyState === 1) {
-      return await Seat.findById(id);
+      const doc = await Seat.findById(String(id));
+      return doc ? { ...(doc.toObject ? doc.toObject() : doc), _id: String(doc._id) } : null;
     }
     return inMemorySeats.get(String(id)) || null;
   },
@@ -147,7 +161,8 @@ export const SeatRepo = {
   async findStaleHolds(now = new Date()) {
     await ensureConnection();
     if (mongoose.connection.readyState === 1) {
-      return await Seat.find({ status: 'HELD', holdExpiresAt: { $lte: now } });
+      const docs = await Seat.find({ status: 'HELD', holdExpiresAt: { $lte: now } });
+      return docs.map((d) => ({ ...(d.toObject ? d.toObject() : d), _id: String(d._id) }));
     }
     const list = Array.from(inMemorySeats.values());
     return list.filter(
