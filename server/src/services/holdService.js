@@ -135,7 +135,7 @@ export const holdService = {
 
     if (mongoose.connection.readyState === 1) {
       updatedSeat = await Seat.findOneAndUpdate(
-        { _id: seatId, show: showId, status: 'HELD' },
+        { _id: seatId, show: showId, status: 'HELD', heldBy: userId },
         {
           $set: {
             status: 'AVAILABLE',
@@ -149,7 +149,7 @@ export const holdService = {
     } else {
       const seats = await SeatRepo.findByShow(showId);
       const seat = seats.find((s) => String(s._id) === String(seatId));
-      if (seat && (seat.status === 'HELD' || String(seat.heldBy) === String(userId))) {
+      if (seat && seat.status === 'HELD' && String(seat.heldBy) === String(userId)) {
         seat.status = 'AVAILABLE';
         seat.heldBy = null;
         seat.lockToken = null;

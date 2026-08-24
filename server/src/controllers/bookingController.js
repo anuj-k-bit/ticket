@@ -54,13 +54,15 @@ export const confirmBooking = async (req, res) => {
     for (const idOfSeat of seatsToConfirm) {
       let updatedSeat = null;
 
+      const now = new Date();
       if (mongoose.connection.readyState === 1) {
         updatedSeat = await Seat.findOneAndUpdate(
           {
             _id: idOfSeat,
             show: showId,
             status: 'HELD',
-            heldBy: userId
+            heldBy: userId,
+            holdExpiresAt: { $gt: now }
           },
           {
             $set: {
@@ -75,7 +77,12 @@ export const confirmBooking = async (req, res) => {
         const seats = await SeatRepo.findByShow(showId);
         const seat = seats.find((s) => String(s._id) === String(idOfSeat));
 
-        if (seat && (seat.status === 'HELD' || String(seat.heldBy) === String(userId))) {
+        if (
+          seat &&
+          seat.status === 'HELD' &&
+          String(seat.heldBy) === String(userId) &&
+          (!seat.holdExpiresAt || new Date(seat.holdExpiresAt).getTime() > now.getTime())
+        ) {
           seat.status = 'BOOKED';
           seat.heldBy = null;
           seat.holdExpiresAt = null;
