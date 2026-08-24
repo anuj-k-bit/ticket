@@ -28,7 +28,8 @@ export const BrowseShows = () => {
       try {
         setLoading(true);
         const res = await api.get('/shows');
-        setShows(res.data.shows || []);
+        const list = Array.isArray(res.data) ? res.data : (res.data?.shows || []);
+        setShows(list);
       } catch (err) {
         setError('Failed to fetch scheduled shows');
       } finally {
@@ -39,11 +40,12 @@ export const BrowseShows = () => {
     fetchShows();
   }, []);
 
-  const filteredShows = shows.filter((s) => {
+  const filteredShows = (shows || []).filter((s) => {
+    if (!s) return false;
     const matchesCategory = selectedCategory === 'all' || s.category === selectedCategory;
-    const matchesSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.venue?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.venue?.city?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (s.title || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+                          (s.venue?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+                          (s.venue?.city || '').toLowerCase().includes((searchTerm || '').toLowerCase());
     return matchesCategory && matchesSearch;
   });
 

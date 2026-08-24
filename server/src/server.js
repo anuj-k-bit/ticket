@@ -5,6 +5,11 @@ import { connectDB } from './config/db.js';
 import { initSocket } from './services/socketService.js';
 import { seedInitialCloudData } from './utils/seedData.js';
 
+// Import workers to initialize BullMQ background jobs
+import './workers/holdWorker.js';
+import './workers/emailWorker.js';
+import './workers/waitlistWorker.js';
+
 dotenv.config({ path: '../.env' });
 
 const PORT = process.env.PORT || 5000;
