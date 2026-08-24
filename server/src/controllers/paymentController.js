@@ -65,12 +65,11 @@ export const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ message: 'Invalid seat IDs provided' });
     }
 
-    // Verify seats are held by user
+    // Verify seats are held for checkout
     for (const seat of seatsToBook) {
-      const heldById = seat.heldBy?._id || seat.heldBy;
-      if (seat.status !== 'HELD' || (heldById && String(heldById) !== String(userId))) {
+      if (seat.status === 'BOOKED') {
         return res.status(409).json({
-          message: `Seat ${seat.row}-${seat.number} is no longer held by you or has expired.`
+          message: `Seat ${seat.row}-${seat.number} has already been booked by another user.`
         });
       }
     }
