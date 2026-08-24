@@ -43,8 +43,9 @@ services:
         sync: false
 
   # Render Static Site Service for React Single-Page Application (SPA)
-  - type: static
+  - type: web
     name: cinepass-frontend
+    env: static
     rootDir: client
     buildCommand: npm run build
     staticPublishPath: dist
