@@ -3,7 +3,11 @@ import axios from 'axios';
 let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 if (!API_BASE_URL) {
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
     API_BASE_URL = 'https://cinepass-backend.onrender.com/api';
   } else {
     API_BASE_URL = 'http://localhost:5000/api';
