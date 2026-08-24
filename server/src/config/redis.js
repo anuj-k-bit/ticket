@@ -2,28 +2,36 @@ import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const isTls = redisUrl.startsWith('rediss://');
 
 let isMock = false;
 
+const getRedisOptions = () => {
+  const options = {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    lazyConnect: true,
+    connectTimeout: 5000,
+    retryStrategy(times) {
+      if (times > 2) return null;
+      return 200;
+    }
+  };
+  if (isTls) {
+    options.tls = { rejectUnauthorized: false };
+  }
+  return options;
+};
+
 const createClientInstance = () => {
   try {
-    const client = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-      lazyConnect: true,
-      retryStrategy(times) {
-        if (times > 2) return null;
-        return 200;
-      }
-    });
-
+    const client = new Redis(redisUrl, getRedisOptions());
     client.on('error', (err) => {
-      if (err.code === 'ECONNREFUSED' && !isMock) {
-        console.warn('[Redis] Host 127.0.0.1:6379 unreachable. Using in-memory Redis mock client.');
+      if (!isMock) {
+        console.warn(`[Redis] Connection warning (${err.message}). Using in-memory Redis mock client.`);
         isMock = true;
       }
     });
-
     return client;
   } catch (e) {
     isMock = true;
@@ -35,8 +43,8 @@ export const redisClient = createClientInstance();
 
 redisClient.connect().then(() => {
   console.log('[Redis] Connected successfully');
-}).catch(() => {
-  console.warn('[Redis] Could not connect to real Redis, switching to in-memory mock.');
+}).catch((err) => {
+  console.warn(`[Redis] Could not connect to real Redis (${err.message}), switching to in-memory mock.`);
   isMock = true;
 });
 
@@ -45,8 +53,11 @@ export const createRedisClient = () => {
     return new RedisMock();
   }
   try {
-    return new Redis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
+    const client = new Redis(redisUrl, getRedisOptions());
+    client.on('error', () => { isMock = true; });
+    return client;
   } catch (e) {
+    isMock = true;
     return new RedisMock();
   }
 };
