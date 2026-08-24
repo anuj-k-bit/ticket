@@ -26,16 +26,19 @@ graph TD
     end
 
     subgraph Concurrency ["Distributed Concurrency & Locking Engine"]
-        RedisLock["Redis Distributed Lock (SET key val NX EX 600)"]
+        RedisLock["Redis Distributed Lock (SET key token NX EX 600)"]
+        LuaRelease["Atomic Lua Lock Release (GET + Compare + DEL)"]
         BullMQWorker["BullMQ Delayed Job Queue (10-Min Hold Expiry & Waitlist Cascades)"]
+        CronCleanup["Periodic Stale Hold Cleanup Engine (60s Repeatable Job)"]
     end
 
     subgraph Storage ["Persistent Database Layer"]
         MongoDB[("MongoDB Database (Atomic updateOne / findOneAndUpdate)")]
+        CompoundIndexes[("Compound Index: { show, category, status, joinedAt }")]
     end
 
     subgraph Services ["External Services & Notification Engine"]
-        RazorpayGateway["Razorpay Payment Gateway API"]
+        RazorpayGateway["Razorpay Payment Gateway (HMAC SHA256 Verification)"]
         EmailEngine["Universal Email Service (Nodemailer + Gmail SMTP / Resend)"]
     end
 
@@ -51,14 +54,15 @@ graph TD
     AuthMiddleware --> AnalyticsController
 
     %% Concurrency & Locking
-    ShowController -->|Acquire Lock| RedisLock
+    ShowController -->|Acquire Lock with UUID Token| RedisLock
     ShowController -->|Schedule Expiry| BullMQWorker
-    PaymentController -->|Release Lock| RedisLock
+    PaymentController -->|Atomic Lua Release| LuaRelease
+    CronCleanup -->|Clean Expired Holds| MongoDB
 
     %% Database Operations
-    ShowController -->|Atomic Update| MongoDB
-    PaymentController -->|Atomic Booking| MongoDB
-    AnalyticsController -->|Read Sales| MongoDB
+    ShowController -->|Atomic Conditional Update| MongoDB
+    PaymentController -->|Atomic Booking Mutation| MongoDB
+    AnalyticsController -->|Read Sales & Index Scan| CompoundIndexes
 
     %% Socket Real-Time Updates
     ShowController -->|Broadcast seat_updated| SocketServer
@@ -66,7 +70,7 @@ graph TD
     SocketServer -->|Push to Clients| SocketClient
 
     %% External Payments & Emails
-    PaymentController -->|Verify Signature| RazorpayGateway
+    PaymentController -->|Verify HMAC Signature| RazorpayGateway
     PaymentController -->|Dispatch QR Ticket Email| EmailEngine
 ```
 
@@ -81,26 +85,33 @@ graph TD
 
 2. **Backend API & Service Layer (`/server`)**:
    - **Express.js API Router**: Handles authentication, show scheduling, seat holds, payment checkout, promo coupons, and analytics.
-   - **JWT Authentication & RBAC**: Enforces strict role-based access control (`customer`, `organiser`, `admin`).
-   - **Universal Email Engine (`emailService.js`)**: Dispatches dark-mode HTML ticket passes with embedded QR codes via Gmail SMTP or Resend.
+   - **Strict Security Enforcement**:
+     - **CORS Whitelist Control**: Non-whitelisted origin requests receive `callback(new Error('Not allowed by CORS'))`.
+     - **Mandatory `JWT_SECRET` Assertion**: Refuses to start if `JWT_SECRET` is missing (no insecure default secret fallbacks).
+     - **Single Confirmation Entry Point**: `/api/payments/verify` requires mandatory `razorpay_signature` HMAC SHA256 signature verification before confirming tickets (un-authenticated `/confirm` route deleted).
+   - **Universal Email Engine (`emailService.js`)**: Dispatches dark-mode HTML ticket passes with embedded QR codes via Nodemailer (Gmail SMTP or Resend).
 
 3. **Concurrency & Lock Engine (Redis + BullMQ)**:
-   - **Redis Distributed Locks**: Atomic `SETNX` key acquisition (`SET hold:{showId}:{seatId} userId NX EX 600`) guaranteeing 100% protection against race conditions under 100,000+ concurrent user surges.
-   - **BullMQ Delayed Queues**: Manages 10-minute seat hold TTL expirations and recursive 15-minute waitlist offer cascades.
+   - **Redis Lock Acquisition**: Atomic `SET hold:{showId}:{seatId} lockToken NX EX 600` storing unique `crypto.randomUUID()` tokens.
+   - **Safe Atomic Lock Release via Lua Script**: Lock releases use an atomic Lua script (`GET + compare + DEL` via `EVAL`) ensuring processes cannot accidentally delete locks owned by other users.
+   - **60-Second Periodic Stale Hold Cleanup**: A 60-second BullMQ repeatable job recovers expired holds in the event of a Redis restart, eliminating orphaned `HELD` seats.
 
 4. **Persistent Database Layer (MongoDB)**:
-   - Atomic conditional updates (`findOneAndUpdate({ _id: seatId, status: 'AVAILABLE' })`) ensuring zero in-memory document mutation race conditions.
+   - **Atomic Conditional Updates**: `Seat.findOneAndUpdate({ _id: seatId, status: 'HELD', heldBy: userId, holdExpiresAt: { $gt: now } })` preventing document mutation race conditions.
+   - **Optimized Compound Indexing**:
+     - Uniqueness Index: `{ show: 1, user: 1, category: 1, status: 1 }` (`unique: true`)
+     - Claim Priority Lookup Index: `{ show: 1, category: 1, status: 1, joinedAt: 1 }` (enables direct `IXSCAN` index scans for FIFO waitlist matching).
 
 ---
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: React (Vite), Tailwind CSS, Socket.io-client, Lucide Icons, Axios
-- **Backend**: Node.js, Express.js, Socket.io, JWT Authentication, `bcryptjs`
+- **Backend**: Node.js, Express.js, Socket.io, JWT Authentication, `bcryptjs`, `helmet`, `express-mongo-sanitize`
 - **Database**: MongoDB with Mongoose ODM
-- **In-Memory Cache & Distributed Lock**: Redis (`ioredis` & atomic `SET NX EX`)
-- **Queue & Background Workers**: BullMQ (Seat hold expiry, Waitlist offer expiry, Async Email dispatches)
-- **Email & QR Engine**: `nodemailer`, `qrcode` (Base64 PNG generation)
+- **In-Memory Cache & Distributed Lock**: Redis (`ioredis`, atomic `SET NX EX`, and Lua scripts)
+- **Queue & Background Workers**: BullMQ (Seat hold expiry, Waitlist offer cascades, Async Email dispatches)
+- **Testing & Quality Assurance**: Jest, Supertest, `mongodb-memory-server`, `ioredis-mock`, `cross-env`
 
 ---
 
@@ -112,11 +123,16 @@ graph TD
 
 ### 1. Clone Repository & Setup Environment
 ```bash
-git clone https://github.com/your-username/ticket-booking.git
-cd ticket-booking
+git clone https://github.com/anuj-k-bit/ticket.git
+cd ticket
 
 # Copy environment template
 cp .env.example .env
+```
+
+Ensure `JWT_SECRET` is set in your `.env` file before launching:
+```env
+JWT_SECRET=super_secret_jwt_key_2026
 ```
 
 ### 2. Install Dependencies
@@ -149,21 +165,45 @@ npm run dev
 
 ---
 
+## 🧪 Running Automated Concurrency Tests
+
+To run the 20-user simultaneous seat lock concurrency test suite:
+
+```bash
+cd server
+npm test tests/concurrency.test.js
+```
+
+**Expected Result**:
+- 20 simultaneous POST requests fired at the exact same millisecond.
+- Exactly 1 request succeeds (**HTTP 200 OK**).
+- Exactly 19 requests are blocked (**HTTP 409 Conflict**).
+
+---
+
+## 🌐 Production Deployment Guide
+
+For full step-by-step instructions on deploying the platform to **Render**, **Vercel**, **MongoDB Atlas**, and **Upstash Redis**, refer to our detailed deployment documentation:
+
+👉 **[Read DEPLOYMENT.md](file:///c:/Users/HP/Desktop/Ticket%20booking/DEPLOYMENT.md)**
+
+---
+
 ## 🧠 Core System Workflows Explained in Plain Language
 
 ### 1. The Seat-Hold TTL Mechanism (Concurrency Protection)
 When a customer clicks an available seat on a show's seating map:
-1. **Redis Distributed Lock**: The server attempts an atomic Redis lock: `SET hold:{showId}:{seatId} userId NX EX 600`.
+1. **Redis Distributed Lock**: The server attempts an atomic Redis lock: `SET hold:{showId}:{seatId} lockToken NX EX 600`.
    - If another user acquired the lock a millisecond earlier, Redis returns `null`. The server immediately responds with **HTTP 409 Conflict** ("Seat is locked by another user") **without touching MongoDB**.
 2. **Atomic Mongo Update**: If the Redis lock succeeds, the server runs an atomic update: `Seat.findOneAndUpdate({ _id: seatId, status: 'AVAILABLE' })` setting status to `'HELD'` owned by the user.
-3. **BullMQ Delayed Expiry Job**: A background BullMQ job is scheduled with a **10-minute delay** (`600s`). If the customer does not complete payment before the countdown timer hits `0:00`, BullMQ automatically resets the seat status to `'AVAILABLE'`, deletes the Redis key, and notifies all connected viewers via Socket.io.
+3. **BullMQ Delayed Expiry Job**: A background BullMQ job is scheduled with a **10-minute delay** (`600s`). If the customer does not complete payment before the countdown timer hits `0:00`, BullMQ automatically resets the seat status to `'AVAILABLE'`, deletes the Redis key via Lua script, and notifies all connected viewers via Socket.io.
 4. **Real-Time WebSocket Sync**: When any seat changes status (`AVAILABLE` ➔ `HELD` ➔ `BOOKED`), Socket.io broadcasts a `seat_updated` payload to room `show_{showId}`. All connected browsers update their seat grid color instantly without a page refresh!
 
 ### 2. Booking Cancellation & Waitlist Auto-Assignment Cascade
 When a customer cancels a confirmed ticket:
 1. **Cancellation Trigger**: The booking is marked as `'CANCELLED'`, and released seats are flipped to `'AVAILABLE'`.
-2. **Atomic Queue Claim**: The server queries the `WaitlistEntry` collection for that show & category, filtering for status `'WAITING'` ordered by `joinedAt ASC`. The first customer in line is claimed using atomic `findOneAndUpdate` (setting status `'OFFERED'`).
-3. **Phase 5 Hold Service Reuse**: The system **reuses the exact `holdService.holdSeat` engine** to place a **15-minute offer hold** on the seat for the waitlisted customer.
+2. **Atomic Queue Claim**: The server queries the `WaitlistEntry` collection for that show & category using the index `{ show: 1, category: 1, status: 1, joinedAt: 1 }`. The first customer in line is claimed using atomic `findOneAndUpdate` (setting status `'OFFERED'`).
+3. **Hold Service Reuse**: The system reuses the exact `holdService.holdSeat` engine to place a **15-minute offer hold** on the seat for the waitlisted customer.
 4. **Time-Limited Email Link**: An email is dispatched to the waitlisted customer containing a direct claim link (`http://localhost:5173/shows/{showId}?offerSeatId={seatId}`).
 5. **Recursive Expiry Cascade**: If the 15-minute offer TTL expires without a confirmed booking, BullMQ marks the entry `'EXPIRED'`, releases the hold, and **recursively calls `processNextWaitlistOffer`** to pass the ticket to the next person waiting in line!
 
@@ -235,6 +275,9 @@ Priority queue entries for sold-out section categories.
 - `joinedAt`: `Date` (Default: `Date.now`)
 - `offeredSeat`: `ObjectId` (Ref: `Seat`, Nullable)
 - `offerExpiresAt`: `Date` (Nullable)
+- **Indexes**:
+  - Uniqueness: `{ show: 1, user: 1, category: 1, status: 1 }` (`unique: true`)
+  - Claim Priority: `{ show: 1, category: 1, status: 1, joinedAt: 1 }`
 
 ---
 
@@ -266,12 +309,14 @@ Priority queue entries for sold-out section categories.
 | `POST` | `/:showId/seats/:seatId/hold` | Protected | Acquire 10-min Redis seat lock | `{ ttlSeconds? }` | `{ success, seat, holdExpiresAt }` |
 | `POST` | `/:showId/seats/:seatId/release` | Protected | Cancel active seat hold | None | `{ success, seat }` |
 
-### Booking Routes (`/api/bookings`)
+### Payment & Booking Routes (`/api/payments` & `/api/bookings`)
 | Method | Endpoint | Auth Required | Description | Request Body | Response Shape |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/:id/cancel` | Protected | Cancel booking & trigger waitlist | None | `{ message, booking, waitlistResults }` |
-| `GET` | `/my-bookings` | Protected | Customer ticket history | None | `{ bookings: [] }` |
-| `GET` | `/:id` | Protected | Fetch booking details & QR Code | None | `{ booking }` |
+| `POST` | `/payments/create-order` | Protected | Create Razorpay order for held seat | `{ showId, seatIds: [] }` | `{ orderId, amount, key, currency }` |
+| `POST` | `/payments/verify` | Protected | **Single Secure Path**: Verify Razorpay HMAC signature & confirm booking | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature, showId, seatIds: [] }` | `{ message, booking }` |
+| `POST` | `/bookings/:id/cancel` | Protected | Cancel booking & trigger waitlist cascade | None | `{ message, booking, waitlistResults }` |
+| `GET` | `/bookings/my-bookings` | Protected | Customer ticket history | None | `{ bookings: [] }` |
+| `GET` | `/bookings/:id` | Protected | Fetch booking details & QR Code | None | `{ booking }` |
 
 ### Waitlist Routes (`/api/waitlist`)
 | Method | Endpoint | Auth Required | Description | Request Body | Response Shape |
