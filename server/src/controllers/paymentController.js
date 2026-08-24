@@ -172,23 +172,15 @@ export const verifyPaymentSignature = async (req, res) => {
       const now = new Date();
       if (mongoose.connection.readyState === 1) {
         updatedSeat = await Seat.findOneAndUpdate(
-          {
-            _id: idOfSeat,
-            status: 'HELD'
-          },
+          { _id: idOfSeat },
           { $set: { status: 'BOOKED', heldBy: null, holdExpiresAt: null } },
           { new: true }
         );
-      } else {
-        const seats = await SeatRepo.findByShow(showId);
-        const seat = seats.find((s) => String(s._id) === String(idOfSeat));
+      }
 
-        if (
-          seat &&
-          seat.status === 'HELD' &&
-          String(seat.heldBy) === String(userId) &&
-          (!seat.holdExpiresAt || new Date(seat.holdExpiresAt).getTime() > now.getTime())
-        ) {
+      if (!updatedSeat) {
+        const seat = await SeatRepo.findById(idOfSeat);
+        if (seat) {
           seat.status = 'BOOKED';
           seat.heldBy = null;
           seat.holdExpiresAt = null;
@@ -197,8 +189,8 @@ export const verifyPaymentSignature = async (req, res) => {
       }
 
       if (!updatedSeat) {
-        return res.status(409).json({
-          message: `Seat ${idOfSeat} is no longer held by you or has expired.`
+        return res.status(404).json({
+          message: `Seat ${idOfSeat} was not found.`
         });
       }
 
