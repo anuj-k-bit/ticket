@@ -36,6 +36,10 @@ graph TD
 - **Security Compliance**: Un-authenticated payment bypass route `/api/bookings/confirm` has been deleted.
 - **Single Source of Truth**: `/api/payments/verify` is the ONLY endpoint authorized to convert seats from `HELD` to `BOOKED`. It enforces Razorpay HMAC signature verification prior to performing atomic database updates, generating digital QR tickets, releasing Redis locks, and queuing email dispatches.
 
+### D. Waitlist Compound Indexing Strategy
+- **Uniqueness Index**: `{ show: 1, user: 1, category: 1, status: 1 }` (Enforces unique active waitlist entries per user, show, and section tier).
+- **Claim Priority Lookup Index**: `{ show: 1, category: 1, status: 1, joinedAt: 1 }` (Optimizes waitlist claim queries (`find({ show, category, status: 'WAITING' }).sort({ joinedAt: 1 })`), eliminating in-memory sorting and enabling direct `IXSCAN` index scans).
+
 ---
 
 ## 🔄 Note on Resiliency: Periodic Stale Hold Cleanup (60s Recovery Engine)

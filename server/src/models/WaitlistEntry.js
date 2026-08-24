@@ -46,6 +46,9 @@ const waitlistEntrySchema = new mongoose.Schema(
 // UNIQUE COMPOUND INDEX preventing duplicate active waitlist entries for the same user, show, and category
 waitlistEntrySchema.index({ show: 1, user: 1, category: 1, status: 1 }, { unique: true });
 
+// OPTIMIZED LOOKUP INDEX for waitlist claim priority lookups: { show: 1, category: 1, status: 1, joinedAt: 1 }
+waitlistEntrySchema.index({ show: 1, category: 1, status: 1, joinedAt: 1 });
+
 export const WaitlistEntry = mongoose.model('WaitlistEntry', waitlistEntrySchema);
 
 // In-memory fallback repository for Waitlist entries
