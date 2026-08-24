@@ -75,7 +75,6 @@ export const SeatRepo = {
     const seatsToInsert = seatTemplates.map((template) => {
       const categoryName = template.category || template.section || 'Standard';
       return {
-        _id: `seat_${showId}_${categoryName}_${template.row}_${template.number}`,
         show: showId,
         venue: venueId,
         category: categoryName,
