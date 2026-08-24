@@ -67,7 +67,8 @@ export const createRazorpayOrder = async (req, res) => {
 
     // Verify seats are held by user
     for (const seat of seatsToBook) {
-      if (seat.status !== 'HELD' || String(seat.heldBy) !== String(userId)) {
+      const heldById = seat.heldBy?._id || seat.heldBy;
+      if (seat.status !== 'HELD' || (heldById && String(heldById) !== String(userId))) {
         return res.status(409).json({
           message: `Seat ${seat.row}-${seat.number} is no longer held by you or has expired.`
         });
@@ -175,9 +176,7 @@ export const verifyPaymentSignature = async (req, res) => {
           {
             _id: idOfSeat,
             show: showId,
-            status: 'HELD',
-            heldBy: userId,
-            holdExpiresAt: { $gt: now }
+            status: 'HELD'
           },
           { $set: { status: 'BOOKED', heldBy: null, holdExpiresAt: null } },
           { new: true }
