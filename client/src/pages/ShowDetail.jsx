@@ -127,17 +127,15 @@ export const ShowDetail = () => {
   useEffect(() => {
     fetchShowData();
 
-    let socketUrl = import.meta.env.VITE_SOCKET_URL;
-    if (!socketUrl) {
-      if (
-        typeof window !== 'undefined' &&
-        window.location.hostname !== 'localhost' &&
-        window.location.hostname !== '127.0.0.1'
-      ) {
-        socketUrl = 'https://cinepass-backend.onrender.com';
-      } else {
-        socketUrl = 'http://localhost:5000';
-      }
+    const rawSocketUrl = import.meta.env.VITE_SOCKET_URL;
+    let socketUrl = 'https://cinepass-backend.onrender.com';
+    if (rawSocketUrl && rawSocketUrl !== 'undefined' && rawSocketUrl !== 'null' && rawSocketUrl.trim() !== '') {
+      socketUrl = rawSocketUrl.trim();
+    } else if (
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ) {
+      socketUrl = 'http://localhost:5000';
     }
 
     const socket = io(socketUrl, {
