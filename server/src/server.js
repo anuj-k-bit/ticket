@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { initSocket } from './services/socketService.js';
+import { seedInitialCloudData } from './utils/seedData.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -13,10 +14,11 @@ const server = http.createServer(app);
 // Initialize Socket.io attached to HTTP Server
 initSocket(server, process.env.CLIENT_URL);
 
-// Connect DB and Start Server
+// Connect DB, Seed Demo Accounts, and Start Server
 const startServer = async () => {
   try {
     await connectDB();
+    await seedInitialCloudData();
     server.listen(PORT, () => {
       console.log(`[Server] Listening on http://localhost:${PORT}`);
     });

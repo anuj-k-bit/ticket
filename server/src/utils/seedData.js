@@ -1,0 +1,109 @@
+import { UserRepo } from '../models/User.js';
+import { VenueRepo } from '../models/Venue.js';
+import { ShowRepo } from '../models/Show.js';
+import { SeatRepo } from '../models/Seat.js';
+
+export const seedInitialCloudData = async () => {
+  try {
+    // 1. Ensure Default Demo Accounts Exist
+    const defaultAccounts = [
+      { name: 'CinePass Customer', email: 'customer@example.com', password: 'password123', role: 'customer' },
+      { name: 'Event Organiser', email: 'organiser@example.com', password: 'password123', role: 'organiser' },
+      { name: 'Platform Admin', email: 'admin@example.com', password: 'password123', role: 'admin' }
+    ];
+
+    let seededUserMap = {};
+    for (const acc of defaultAccounts) {
+      let existing = await UserRepo.findOne({ email: acc.email });
+      if (!existing) {
+        existing = await UserRepo.create(acc);
+        console.log(`[Database Seeder] Created default user: ${acc.email}`);
+      }
+      seededUserMap[acc.role] = existing;
+    }
+
+    // 2. Check if Shows exist, if not seed default Indian venues & shows
+    const existingShows = await ShowRepo.findAll();
+    if (existingShows && existingShows.length > 0) {
+      console.log(`[Database Seeder] ${existingShows.length} shows already exist in database.`);
+      return;
+    }
+
+    console.log('[Database Seeder] Seeding default Indian venues and shows...');
+
+    // Seed Venue
+    let venue = await VenueRepo.create({
+      name: 'Wankhede Stadium',
+      address: 'D Road, Churchgate',
+      city: 'Mumbai, Maharashtra',
+      sections: [
+        { name: 'Sachin Tendulkar Stand (VIP)', rows: 4, seatsPerRow: 12 },
+        { name: 'Garware Pavilion (Gold)', rows: 8, seatsPerRow: 16 },
+        { name: 'Vijay Merchant Stand (Silver)', rows: 10, seatsPerRow: 20 }
+      ]
+    });
+
+    const organiserUser = seededUserMap.organiser || seededUserMap.admin;
+
+    // Seed Shows
+    const showsToSeed = [
+      {
+        title: 'A.R. Rahman: Dil Se Live Concert 2026',
+        category: 'concert',
+        venueId: String(venue._id || venue.id),
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 3),
+        endTime: new Date(Date.now() + 86400000 * 3 + 14400000),
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 12500 },
+          { category: 'Garware Pavilion (Gold)', price: 6500 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 3500 }
+        ]
+      },
+      {
+        title: 'IPL 2026 Final: Mumbai Indians vs Chennai Super Kings',
+        category: 'sports',
+        venueId: String(venue._id || venue.id),
+        organiserId: String(organiserUser._id || organiserUser.id),
+        startTime: new Date(Date.now() + 86400000 * 7),
+        endTime: new Date(Date.now() + 86400000 * 7 + 18000000),
+        pricing: [
+          { category: 'Sachin Tendulkar Stand (VIP)', price: 25000 },
+          { category: 'Garware Pavilion (Gold)', price: 12000 },
+          { category: 'Vijay Merchant Stand (Silver)', price: 5000 }
+        ]
+      }
+    ];
+
+    for (const s of showsToSeed) {
+      const createdShow = await ShowRepo.create({
+        title: s.title,
+        category: s.category,
+        venue: s.venueId,
+        organiser: s.organiserId,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        pricing: s.pricing,
+        status: 'upcoming'
+      });
+
+      const pricingMap = {};
+      s.pricing.forEach((p) => {
+        pricingMap[p.category] = p.price;
+      });
+
+      await SeatRepo.createSeatsForShow({
+        showId: String(createdShow._id || createdShow.id),
+        venueId: s.venueId,
+        seatTemplates: venue.seatMapTemplate || [],
+        pricingMap
+      });
+
+      console.log(`[Database Seeder] Created show & seats: ${s.title}`);
+    }
+
+    console.log('[Database Seeder] Initial database seeding completed successfully!');
+  } catch (err) {
+    console.error('[Database Seeder Error]:', err.message);
+  }
+};
