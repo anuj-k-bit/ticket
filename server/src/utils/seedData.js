@@ -22,6 +22,8 @@ export const seedInitialCloudData = async () => {
       seededUserMap[acc.role] = existing;
     }
 
+    const adminUser = seededUserMap.admin || seededUserMap.organiser;
+
     // 2. Check if Shows exist, if not seed default Indian venues & shows
     const existingShows = await ShowRepo.findAll();
     if (existingShows && existingShows.length > 0) {
@@ -31,16 +33,46 @@ export const seedInitialCloudData = async () => {
 
     console.log('[Database Seeder] Seeding default Indian venues and shows...');
 
-    // Seed Venue
+    const sections = [
+      { name: 'Sachin Tendulkar Stand (VIP)', rows: 4, seatsPerRow: 12 },
+      { name: 'Garware Pavilion (Gold)', rows: 8, seatsPerRow: 16 },
+      { name: 'Vijay Merchant Stand (Silver)', rows: 10, seatsPerRow: 20 }
+    ];
+
+    const generateSeatTemplates = (secs) => {
+      const templates = [];
+      let currentY = 50;
+      secs.forEach((sec) => {
+        for (let r = 0; r < sec.rows; r++) {
+          const rowChar = String.fromCharCode(65 + r);
+          for (let n = 1; n <= sec.seatsPerRow; n++) {
+            templates.push({
+              section: sec.name,
+              row: rowChar,
+              number: n,
+              x: 50 + (n - 1) * 35,
+              y: currentY
+            });
+          }
+          currentY += 40;
+        }
+        currentY += 60;
+      });
+      return templates;
+    };
+
+    const seatMapTemplate = generateSeatTemplates(sections);
+    const capacity = seatMapTemplate.length;
+
+    // Seed Venue with required createdBy field
     let venue = await VenueRepo.create({
       name: 'Wankhede Stadium',
       address: 'D Road, Churchgate',
       city: 'Mumbai, Maharashtra',
-      sections: [
-        { name: 'Sachin Tendulkar Stand (VIP)', rows: 4, seatsPerRow: 12 },
-        { name: 'Garware Pavilion (Gold)', rows: 8, seatsPerRow: 16 },
-        { name: 'Vijay Merchant Stand (Silver)', rows: 10, seatsPerRow: 20 }
-      ]
+      sections,
+      seatMapTemplate,
+      capacity,
+      createdBy: adminUser._id
     });
 
     const organiserUser = seededUserMap.organiser || seededUserMap.admin;
@@ -95,7 +127,7 @@ export const seedInitialCloudData = async () => {
       await SeatRepo.createSeatsForShow({
         showId: String(createdShow._id || createdShow.id),
         venueId: s.venueId,
-        seatTemplates: venue.seatMapTemplate || [],
+        seatTemplates: seatMapTemplate,
         pricingMap
       });
 
