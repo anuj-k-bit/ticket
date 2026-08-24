@@ -1,6 +1,5 @@
 import express from 'express';
 import {
-  confirmBooking,
   cancelBooking,
   getUserBookings,
   getBookingById,
@@ -15,7 +14,6 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post('/confirm', validateBody(schemas.confirmBooking), confirmBooking);
 router.post('/:id/cancel', cancelBooking);
 router.get('/my-bookings', getUserBookings);
 

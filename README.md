@@ -269,7 +269,6 @@ Priority queue entries for sold-out section categories.
 ### Booking Routes (`/api/bookings`)
 | Method | Endpoint | Auth Required | Description | Request Body | Response Shape |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/confirm` | Protected | Atomically confirm held seat & generate QR | `{ showId, seatIds: [] }` | `{ message, booking }` |
 | `POST` | `/:id/cancel` | Protected | Cancel booking & trigger waitlist | None | `{ message, booking, waitlistResults }` |
 | `GET` | `/my-bookings` | Protected | Customer ticket history | None | `{ bookings: [] }` |
 | `GET` | `/:id` | Protected | Fetch booking details & QR Code | None | `{ booking }` |

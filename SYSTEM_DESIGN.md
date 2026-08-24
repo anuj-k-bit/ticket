@@ -32,6 +32,10 @@ graph TD
   - **Confirm**: `{ _id: seatId, show: showId, status: 'HELD', heldBy: userId, holdExpiresAt: { $gt: now } }`
   - **Release / Expiry**: `{ _id: seatId, show: showId, status: 'HELD', heldBy: userId }`
 
+### C. Single Secure Confirmation Path (`/api/payments/verify`)
+- **Security Compliance**: Un-authenticated payment bypass route `/api/bookings/confirm` has been deleted.
+- **Single Source of Truth**: `/api/payments/verify` is the ONLY endpoint authorized to convert seats from `HELD` to `BOOKED`. It enforces Razorpay HMAC signature verification prior to performing atomic database updates, generating digital QR tickets, releasing Redis locks, and queuing email dispatches.
+
 ---
 
 ## 🔄 Note on Resiliency: Periodic Stale Hold Cleanup (60s Recovery Engine)
